@@ -4,7 +4,7 @@ A responsive, cross-platform sports betting interface prototype built with Expo 
 
 Repository: https://github.com/ogc16/touchline
 
-> **Demo notice:** Touchline is a UI prototype. It does not accept deposits, place real wagers, settle real bets, or pay out winnings. Balances, bet history, and some odds are illustrative demo data.
+> **Demo notice:** Touchline is a UI prototype. It does not accept deposits, place real wagers, settle real bets, or pay out real winnings. Balances, bet history, prize money, and some odds are illustrative demo data.
 
 ## About
 
@@ -17,6 +17,9 @@ The app uses real, keyless ESPN public scoreboard data for fixtures and scores. 
 - **Live fixture board** sourced from ESPN public scoreboards; no API key required.
 - **Real scores and statuses**, including scheduled, live, and finished events.
 - **Demo odds layer** with deterministic fallbacks and simulated price movement.
+- **Optional local auth** with sign-in, sign-up, persisted sessions, and seeded demo accounts.
+- **Guest browsing everywhere**: every screen is viewable without signing in; only placing a demo bet and claiming prizes require authentication.
+- **Prize system** with a growing jackpot, accumulator jackpot triggers, a lucky-number draw, and a daily random-user draw.
 - **Full bet slip flow**: add selections, enter stake, view potential payout, place demo bet, and review bet history.
 - **Responsive layouts**: compact mobile slip bar and modal, tablet two-column grids, desktop event board with persistent bet slip rail.
 - **Light, dark, and system themes** with saved appearance preference.
@@ -38,6 +41,7 @@ The app uses real, keyless ESPN public scoreboard data for fixtures and scores. 
 | League detail | `src/app/league/[slug].tsx` | Fixtures filtered by competition |
 | Search | `src/app/search.tsx` | Search teams, leagues, and events |
 | Results | `src/app/results.tsx` | Finished events grouped by date |
+| Prizes | `src/app/prizes.tsx` | Jackpot pool, lucky-number picker, daily draw winner, claimed prizes, and recent winners |
 | Notifications | `src/app/notifications.tsx` | Recent demo updates |
 | Profile | `src/app/(tabs)/account/profile.tsx` | Demo account identity |
 | Payment methods | `src/app/(tabs)/account/payment-methods.tsx` | Example payment instruments |
@@ -56,7 +60,8 @@ The app uses real, keyless ESPN public scoreboard data for fixtures and scores. 
 - **Icons:** lucide-react-native
 - **Fonts:** Manrope and DM Mono from `@expo-google-fonts`
 - **Data:** ESPN public scoreboard endpoints
-- **State:** React context providers for theme, sports data, odds feed, and bet slip
+- **State:** React context providers for theme, auth, prizes, sports data, odds feed, and bet slip
+- **Persistence:** AsyncStorage for theme preference and local demo sessions
 - **Linting:** ESLint with `eslint-config-expo`
 
 ## Data model
@@ -77,6 +82,34 @@ The service normalizes ESPN competitions into a local `SportEvent` type containi
 - Demo market odds derived deterministically from event IDs
 
 If ESPN is unavailable or the browser blocks the request, the app falls back to a curated sample set so the interface remains usable. The data status component surfaces whether the current board is using live, published, or demo data.
+
+## Auth and guest access
+
+Touchline uses a deliberately lightweight, local demo auth system. It is designed for prototype exploration, not production security.
+
+- The app starts in guest mode and every screen remains visible.
+- Selecting odds and building a slip works without an account.
+- Placing a demo bet opens the sign-in modal; after signing in, the bet is placed normally.
+- Sign-up and sign-in are available from Account and from the bet slip gate.
+- Sessions and account records are persisted with AsyncStorage on the device.
+- Passwords are never stored directly; only a non-cryptographic local digest is saved.
+- Use `demo@touchline.app` / `demo1234` for the seeded demo account, or create a new local account.
+
+Because there is no backend, do not reuse a real password. For a production deployment, replace `src/store/auth.tsx` with a server-backed identity provider and move all protected actions behind verified server sessions.
+
+## Prize system
+
+Prize money is simulated and stored locally in `src/store/prizes.tsx`.
+
+- The jackpot starts at `$8,640` and gains 3% of every demo stake.
+- Placing an accumulator with odds of `8.00` or higher and a stake of at least `$10` triggers a jackpot payment from the current pool, then resets the pool to its seed value.
+- A daily draw picks one local account at random once per calendar day. The winner is deterministic for a given date and account list, so refreshing the app does not change the result.
+- Signed-in users can pick a lucky number from 1–50. Each calendar day draws one winning number deterministically; an exact match wins `$500` and a number one away wins `$75`.
+- Guests can view the jackpot, lucky result, and winners. Signed-in users can claim prizes; claiming credits the demo wallet balance.
+- Prize awards, jackpot value, lucky-number picks, draw dates, and claim state persist with AsyncStorage.
+- Seeded winner history is included so the first run has meaningful activity.
+
+The draw uses a lightweight deterministic selector, not a cryptographically secure random source. A production prize system should run draws server-side with auditable randomness, identity checks, tax handling, and regulatory controls.
 
 ## Responsive behavior
 
@@ -159,6 +192,8 @@ There is currently no automated test suite. Contributions that add focused unit 
 - `SportsProvider` owns fixtures, loading, refresh, error, source, and date state.
 - `useOddsFeed` simulates small price movements on top of deterministic base odds.
 - `BetSlipProvider` manages selections, stake input, payout calculation, placement, balance, and order history.
+- `AuthProvider` manages local demo accounts, persisted sessions, guest state, and the global authentication prompt.
+- `PrizeProvider` manages the jackpot pool, lucky-number picks, daily deterministic draws, prize history, and claim state.
 - Route-level screens stay mostly declarative; data and cross-screen state live in providers and hooks.
 - ESPN endpoints are unauthenticated and unofficial. Their response shape can change; the normalization layer keeps the rest of the app insulated.
 

@@ -7,7 +7,8 @@ import {
   type ReactNode,
 } from 'react';
 
-import type { PlacedBet, Selection } from '@/data/types';
+import type { BetPrize, PlacedBet, Selection } from '@/data/types';
+import { roundMoney } from '@/utils/money';
 
 interface BetSlipContextValue {
   selections: Selection[];
@@ -24,7 +25,8 @@ interface BetSlipContextValue {
   toggleSelection: (selection: Selection) => void;
   removeSelection: (id: string) => void;
   clearSlip: () => void;
-  placeBet: () => PlacedBet | null;
+  placeBet: (prize?: BetPrize) => PlacedBet | null;
+  creditBalance: (amount: number) => void;
 }
 
 const BetSlipContext = createContext<BetSlipContextValue | null>(null);
@@ -128,7 +130,7 @@ export function BetSlipProvider({ children }: { children: ReactNode }) {
     return null;
   }, [balance, selections.length, stake]);
 
-  const placeBet = useCallback((): PlacedBet | null => {
+  const placeBet = useCallback((prize?: BetPrize): PlacedBet | null => {
     if (selections.length === 0 || stakeError !== null) {
       return null;
     }
@@ -145,6 +147,7 @@ export function BetSlipProvider({ children }: { children: ReactNode }) {
       payout,
       status: 'pending',
       selections,
+      prize,
     };
 
     setPlacedBets((current) => [bet, ...current]);
@@ -152,6 +155,13 @@ export function BetSlipProvider({ children }: { children: ReactNode }) {
     clearSlip();
     return bet;
   }, [clearSlip, payout, selections, stake, stakeError]);
+
+  const creditBalance = useCallback((amount: number) => {
+    if (!Number.isFinite(amount) || amount <= 0) {
+      return;
+    }
+    setBalance((current) => roundMoney(current + amount));
+  }, []);
 
   const value = useMemo<BetSlipContextValue>(
     () => ({
@@ -170,11 +180,13 @@ export function BetSlipProvider({ children }: { children: ReactNode }) {
       removeSelection,
       clearSlip,
       placeBet,
+      creditBalance,
     }),
     [
       balance,
       clearSlip,
       combinedOdds,
+      creditBalance,
       placeBet,
       payout,
       placedBets,

@@ -6,13 +6,18 @@ import {
   CircleHelp,
   CreditCard,
   FileText,
+  LogIn,
+  LogOut,
   Palette,
   Settings2,
   ShieldCheck,
+  Trophy,
 } from 'lucide-react-native';
 
 import { PageTitle, Screen, SettingsGroup, SettingsRow } from '@/components/ui';
+import { getInitials, useAuth } from '@/store/auth';
 import { useBetSlip } from '@/store/bet-slip';
+import { usePrize } from '@/store/prizes';
 import { useTheme } from '@/theme/theme';
 import { radius, spacing, typography, type ThemeColors } from '@/theme/tokens';
 import { formatMoney } from '@/utils/money';
@@ -22,7 +27,12 @@ export default function AccountScreen() {
   const { colors, preference } = useTheme();
   const styles = useMemo(() => createStyles(colors), [colors]);
   const { balance, placedBets } = useBetSlip();
+  const { user, isAuthenticated, openAuthPrompt, signOut } = useAuth();
+  const { unclaimedMyCount } = usePrize();
   const themeLabel = preference === 'system' ? 'System' : preference === 'dark' ? 'Dark' : 'Light';
+  const displayName = isAuthenticated && user ? user.name : 'Guest viewer';
+  const displayEmail = isAuthenticated && user ? user.email : 'Browsing without an account';
+  const initials = isAuthenticated && user ? getInitials(user.name) : 'GV';
 
   return (
     <Screen>
@@ -30,14 +40,14 @@ export default function AccountScreen() {
 
       <View style={styles.profileCard}>
         <View style={styles.avatar}>
-          <Text style={styles.avatarText}>PM</Text>
+          <Text style={styles.avatarText}>{initials}</Text>
         </View>
         <View style={styles.profileText}>
-          <Text style={styles.profileName}>Priya Mehta</Text>
-          <Text style={styles.profileEmail}>priya@example.com</Text>
+          <Text style={styles.profileName}>{displayName}</Text>
+          <Text style={styles.profileEmail}>{displayEmail}</Text>
         </View>
         <View style={styles.verifiedPill}>
-          <Text style={styles.verifiedText}>VERIFIED</Text>
+          <Text style={styles.verifiedText}>{isAuthenticated ? 'SIGNED IN' : 'GUEST'}</Text>
         </View>
       </View>
 
@@ -51,6 +61,35 @@ export default function AccountScreen() {
           <Text style={styles.statValue}>{placedBets.length}</Text>
         </View>
       </View>
+
+      <SettingsGroup title="Access">
+        {isAuthenticated ? (
+          <SettingsRow
+            icon={<LogOut size={18} color={colors.emerald} strokeWidth={2.2} />}
+            label="Sign out"
+            detail="End this demo session on this device"
+            onPress={() => void signOut()}
+          />
+        ) : (
+          <SettingsRow
+            icon={<LogIn size={18} color={colors.emerald} strokeWidth={2.2} />}
+            label="Sign in or create account"
+            detail="Optional. Guest viewing is always available."
+            badge="OPTIONAL"
+            onPress={() => openAuthPrompt('Sign in to your Touchline account')}
+          />
+        )}
+      </SettingsGroup>
+
+      <SettingsGroup title="Rewards">
+        <SettingsRow
+          icon={<Trophy size={18} color={colors.emerald} strokeWidth={2.2} />}
+          label="Prizes and jackpot"
+          detail="Daily draws and accumulator jackpots"
+          badge={unclaimedMyCount > 0 ? `${unclaimedMyCount} NEW` : undefined}
+          onPress={() => router.push('/prizes')}
+        />
+      </SettingsGroup>
 
       <SettingsGroup title="Wallet">
         <SettingsRow
