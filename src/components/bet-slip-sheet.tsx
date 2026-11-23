@@ -13,11 +13,13 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
-import { Check, X } from 'lucide-react-native';
+import { Check, Trophy, X } from 'lucide-react-native';
 
 import { formatOdds } from '@/data/events';
-import type { PlacedBet } from '@/data/types';
+import type { BetPrize, PlacedBet } from '@/data/types';
+import { useAuth } from '@/store/auth';
 import { useBetSlip } from '@/store/bet-slip';
+import { usePrize } from '@/store/prizes';
 import { useTheme } from '@/theme/theme';
 import { radius, spacing, typography, type ThemeColors } from '@/theme/tokens';
 import { formatMoney } from '@/utils/money';
@@ -29,6 +31,8 @@ export default function BetSlipSheet() {
   const styles = useMemo(() => createStyles(colors, elevation), [colors, elevation]);
   const { height } = useWindowDimensions();
   const sheetHeight = Math.min(Math.round(height * 0.88), 760);
+  const { isAuthenticated, openAuthPrompt, user } = useAuth();
+  const { recordBet } = usePrize();
   const {
     selections,
     stakeInput,
@@ -45,10 +49,12 @@ export default function BetSlipSheet() {
     placeBet,
   } = useBetSlip();
   const [receipt, setReceipt] = useState<PlacedBet | null>(null);
+  const [prizeWon, setPrizeWon] = useState<BetPrize | null>(null);
   const [placing, setPlacing] = useState(false);
 
   function closeSheet() {
     setReceipt(null);
+    setPrizeWon(null);
     setPlacing(false);
     setSheetOpen(false);
   }
@@ -63,12 +69,24 @@ export default function BetSlipSheet() {
     if (placing || selections.length === 0 || stakeError !== null) {
       return;
     }
+    if (!isAuthenticated) {
+      openAuthPrompt('Sign in to place your bet');
+      return;
+    }
     setPlacing(true);
     await new Promise((resolve) => setTimeout(resolve, 650));
-    const bet = placeBet();
+    let prize: BetPrize | null = null;
+    if (user) {
+      const award = recordBet({ stake, odds: combinedOdds, user });
+      if (award) {
+        prize = { kind: award.kind, amount: award.amount, label: award.title };
+      }
+    }
+    const bet = placeBet(prize ?? undefined);
     setPlacing(false);
     if (bet) {
       setReceipt(bet);
+      setPrizeWon(prize);
     }
   }
 
@@ -118,9 +136,18 @@ export default function BetSlipSheet() {
                       value={formatMoney(receipt.payout)}
                       styles={styles}
                     />
-                  </View>
-                </View>
-              </ScrollView>
+                   </View>
+                   {prizeWon ? (
+                     <View style={styles.prizeBanner}>
+                       <Trophy size={20} color={colors.emeraldDeep} strokeWidth={2.4} />
+                       <View style={styles.prizeCopy}>
+                         <Text style={styles.prizeTitle}>{prizeWon.label} won</Text>
+                         <Text style={styles.prizeAmount}>{formatMoney(prizeWon.amount)}</Text>
+                       </View>
+                     </View>
+                   ) : null}
+                 </View>
+               </ScrollView>
             ) : (
               <>
                 <View style={styles.sheetHeader}>
@@ -258,9 +285,14 @@ export default function BetSlipSheet() {
                   >
                     {placing ? <LoadingBall size={18} /> : null}
                     <Text style={styles.primaryText}>
-                      {placing ? 'Placing bet' : 'Place bet'}
+                      {placing ? 'Placing bet' : isAuthenticated ? 'Place bet' : 'Sign in to place bet'}
                     </Text>
                   </Pressable>
+                  {!isAuthenticated ? (
+                    <Text style={styles.guestHint}>
+                      Browsing as guest. Sign in to place a demo bet.
+                    </Text>
+                  ) : null}
                   <Text style={styles.disclaimer}>Prices shown are fixed at the time of placing.</Text>
                 </View>
               </>
@@ -492,6 +524,14 @@ function createStyles(colors: ThemeColors, elevation: ReturnType<typeof useTheme
       color: colors.onEmerald,
     },
     pressed: { transform: [{ scale: 0.985 }] },
+    guestHint: {
+      fontFamily: typography.sans,
+      fontSize: 11,
+      fontWeight: '700',
+      color: colors.emeraldDeep,
+      textAlign: 'center',
+      marginTop: spacing.sm,
+    },
     disclaimer: {
       fontFamily: typography.sans,
       fontSize: 11,
@@ -531,6 +571,27 @@ function createStyles(colors: ThemeColors, elevation: ReturnType<typeof useTheme
       color: colors.inkMuted,
       textAlign: 'center',
       marginTop: spacing.sm,
+    },
+    prizeBanner: {
+      width: '100%',
+      marginTop: spacing.md,
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: spacing.sm,
+      padding: spacing.md,
+      borderRadius: radius.md,
+      backgroundColor: colors.emeraldWash,
+      borderWidth: 1,
+      borderColor: colors.emerald,
+    },
+    prizeCopy: { flex: 1 },
+    prizeTitle: { fontFamily: typography.sans, fontSize: 12, fontWeight: '800', color: colors.ink },
+    prizeAmount: {
+      fontFamily: typography.mono,
+      fontSize: 16,
+      fontWeight: '500',
+      color: colors.emeraldDeep,
+      marginTop: 2,
     },
     receiptCard: {
       width: '100%',

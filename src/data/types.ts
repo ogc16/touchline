@@ -57,6 +57,12 @@ export interface Selection {
   sport: Sport;
 }
 
+export interface BetPrize {
+  kind: 'jackpot' | 'daily' | 'lucky';
+  amount: number;
+  label: string;
+}
+
 export interface PlacedBet {
   id: string;
   selections: Selection[];
@@ -64,4 +70,5 @@ export interface PlacedBet {
   payout: number;
   placedAt: string;
   status: 'pending' | 'won' | 'lost';
+  prize?: BetPrize;
 }

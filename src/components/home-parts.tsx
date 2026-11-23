@@ -1,9 +1,11 @@
 import { useMemo } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useRouter } from 'expo-router';
-import { Bell, Minus, Plus } from 'lucide-react-native';
+import { Bell, ChevronRight, Minus, Plus, Trophy } from 'lucide-react-native';
 
 import { sports } from '@/data/events';
+import { useAuth } from '@/store/auth';
+import { usePrize } from '@/store/prizes';
 import { useTheme } from '@/theme/theme';
 import { radius, spacing, typography, type ThemeColors } from '@/theme/tokens';
 import { formatMoney } from '@/utils/money';
@@ -90,6 +92,39 @@ export function BalanceCard({ balance }: { balance: number }) {
         </Pressable>
       </View>
     </View>
+  );
+}
+
+export function PrizeBanner() {
+  const { colors } = useTheme();
+  const styles = useMemo(() => createStyles(colors), [colors]);
+  const router = useRouter();
+  const { isAuthenticated } = useAuth();
+  const { jackpot, dailyWinner, unclaimedMyCount } = usePrize();
+
+  return (
+    <Pressable
+      accessibilityRole="button"
+      accessibilityLabel="Open prizes"
+      onPress={() => router.push('/prizes')}
+      style={({ pressed }) => [styles.prizeBanner, pressed ? styles.pressed : null]}
+    >
+      <View style={styles.prizeIcon}>
+        <Trophy size={18} color={colors.emeraldDeep} strokeWidth={2.4} />
+      </View>
+      <View style={styles.prizeCopy}>
+        <Text style={styles.prizeLabel}>TODAY&apos;S JACKPOT</Text>
+        <Text style={styles.prizeAmount}>{formatMoney(jackpot)}</Text>
+        <Text style={styles.prizeMeta} numberOfLines={1}>
+          {isAuthenticated && unclaimedMyCount > 0
+            ? `${unclaimedMyCount} prize waiting to be claimed`
+            : dailyWinner
+              ? `Daily draw: ${dailyWinner.winnerName}`
+              : 'Daily draw opens for local accounts'}
+        </Text>
+      </View>
+      <ChevronRight size={18} color={colors.inkMuted} strokeWidth={2.2} />
+    </Pressable>
   );
 }
 
@@ -295,5 +330,39 @@ function createStyles(colors: ThemeColors) {
       letterSpacing: -0.2,
     },
     sectionAction: { fontFamily: typography.sans, fontSize: 13, fontWeight: '700', color: colors.emerald },
+    prizeBanner: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: spacing.md,
+      marginTop: spacing.md,
+      padding: spacing.md,
+      borderRadius: radius.md,
+      borderWidth: 1,
+      borderColor: colors.line,
+      backgroundColor: colors.surface,
+    },
+    prizeIcon: {
+      width: 40,
+      height: 40,
+      borderRadius: radius.sm,
+      alignItems: 'center',
+      justifyContent: 'center',
+      backgroundColor: colors.emeraldWash,
+    },
+    prizeCopy: { flex: 1 },
+    prizeLabel: {
+      fontFamily: typography.mono,
+      fontSize: 9,
+      color: colors.emerald,
+      letterSpacing: 0.8,
+    },
+    prizeAmount: {
+      fontFamily: typography.mono,
+      fontSize: 16,
+      color: colors.ink,
+      marginTop: 3,
+      fontVariant: ['tabular-nums'],
+    },
+    prizeMeta: { fontFamily: typography.sans, fontSize: 11, color: colors.inkMuted, marginTop: 2 },
   });
 }

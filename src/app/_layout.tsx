@@ -13,10 +13,13 @@ import {
 } from '@expo-google-fonts/manrope';
 import { DMMono_400Regular, DMMono_500Medium } from '@expo-google-fonts/dm-mono';
 
+import AuthModal from '@/components/auth-modal';
 import BetSlipBar from '@/components/bet-slip-bar';
 import BetSlipSheet from '@/components/bet-slip-sheet';
 import LoadingBall from '@/components/loading-ball';
+import { AuthProvider, useAuth } from '@/store/auth';
 import { BetSlipProvider } from '@/store/bet-slip';
+import { PrizeProvider } from '@/store/prizes';
 import { SportsProvider } from '@/store/sports';
 import { ThemeProvider, useTheme } from '@/theme/theme';
 
@@ -39,6 +42,7 @@ function AppShell() {
           <Stack.Screen name="search" />
           <Stack.Screen name="notifications" />
           <Stack.Screen name="results" />
+          <Stack.Screen name="prizes" />
           <Stack.Screen name="sport/[slug]" />
           <Stack.Screen name="league/[slug]" />
         </Stack>
@@ -46,6 +50,17 @@ function AppShell() {
         <BetSlipSheet />
       </SportsProvider>
     </BetSlipProvider>
+  );
+}
+
+function AuthenticatedApp({ fontsLoaded }: { fontsLoaded: boolean }) {
+  const { status, users, user } = useAuth();
+  return (
+    <PrizeProvider authStatus={status} authUsers={users} currentUser={user}>
+      <AppShell />
+      {!fontsLoaded ? <LoadingBall fullScreen label="Loading Touchline" /> : null}
+      <AuthModal />
+    </PrizeProvider>
   );
 }
 
@@ -68,8 +83,9 @@ export default function RootLayout() {
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
       <ThemeProvider>
-        <AppShell />
-        {!fontsLoaded ? <LoadingBall fullScreen label="Loading Touchline" /> : null}
+        <AuthProvider>
+          <AuthenticatedApp fontsLoaded={fontsLoaded} />
+        </AuthProvider>
       </ThemeProvider>
     </GestureHandlerRootView>
   );

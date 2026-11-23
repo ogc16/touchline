@@ -7,6 +7,7 @@ import {
   Avatar,
   BalanceCard,
   NotificationButton,
+  PrizeBanner,
   Wordmark,
 } from '@/components/home-parts';
 import {
@@ -19,6 +20,7 @@ import {
   SectionHeading,
 } from '@/components/ui';
 import { useResponsive } from '@/hooks/use-responsive';
+import { getInitials, useAuth } from '@/store/auth';
 import { useBetSlip } from '@/store/bet-slip';
 import { useSports } from '@/store/sports';
 import { useTheme } from '@/theme/theme';
@@ -30,6 +32,7 @@ export default function HomeScreen() {
   const { contentWidth } = useResponsive();
   const routerRef = useRouter();
   const { balance } = useBetSlip();
+  const { user, isAuthenticated } = useAuth();
   const { events, loading, refreshing, error, source, lastUpdated, refresh } = useSports();
   const [sport, setSport] = useState('All');
 
@@ -74,12 +77,16 @@ export default function HomeScreen() {
         <Wordmark />
         <View style={styles.headerActions}>
           <NotificationButton />
-          <Avatar />
+          <Avatar
+            initials={isAuthenticated && user ? getInitials(user.name) : 'GV'}
+          />
         </View>
       </View>
 
       <View style={styles.greeting}>
-        <Text style={styles.greetingTitle}>Good evening, Priya</Text>
+        <Text style={styles.greetingTitle}>
+          Good evening, {isAuthenticated && user ? user.name.split(' ')[0] : 'there'}
+        </Text>
         <Text style={styles.greetingSubtitle}>Here is what is on the board today.</Text>
       </View>
 
@@ -93,6 +100,8 @@ export default function HomeScreen() {
       />
 
       <BalanceCard balance={balance} />
+
+      <PrizeBanner />
 
       <Pressable
         accessibilityRole="button"
